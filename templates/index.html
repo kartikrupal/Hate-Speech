@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hate Speech Detector Bot</title>
+    <style>
+        /* CSS Variables for theming */
+        :root {
+            --bg-color: #f4f4f9;
+            --container-bg: #ffffff;
+            --text-color: #000000;
+            --header-bg: #4A90E2;
+            --user-msg-bg: #dcf8c6;
+            --bot-msg-bg: #e9e9eb;
+            --input-bg: #ffffff;
+            --border-color: #ddd;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --container-bg: #1e1e1e;
+            --text-color: #e0e0e0;
+            --header-bg: #2a5a8a;
+            --user-msg-bg: #264b28;
+            --bot-msg-bg: #363636;
+            --input-bg: #2c2c2c;
+            --border-color: #444;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        #chat-container {
+            width: 400px;
+            height: 600px;
+            background-color: var(--container-bg);
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.3s;
+        }
+        #chat-header {
+            background-color: var(--header-bg);
+            color: white;
+            padding: 10px 15px;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.3s;
+        }
+        #chat-header h2 {
+            margin: 0;
+            font-size: 1.2em;
+        }
+        .header-btn {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1.5em;
+        }
+        #chat-box {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .message {
+            padding: 10px 15px;
+            border-radius: 18px;
+            max-width: 75%;
+            line-height: 1.4;
+            transition: background-color 0.3s;
+        }
+        .user {
+            background-color: var(--user-msg-bg);
+            align-self: flex-end;
+            color: var(--text-color);
+        }
+        .bot {
+            background-color: var(--bot-msg-bg);
+            align-self: flex-start;
+            color: var(--text-color);
+        }
+        #input-container {
+            display: flex;
+            border-top: 1px solid var(--border-color);
+            padding: 10px;
+            transition: border-color 0.3s;
+        }
+        #user-input {
+            flex-grow: 1;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 10px 15px;
+            outline: none;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        #send-btn {
+            background-color: var(--header-bg);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            margin-left: 10px;
+            cursor: pointer;
+            font-size: 1.2em;
+            transition: background-color 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <div id="chat-header">
+            <button id="clear-btn" class="header-btn" title="Clear Chat">✂️</button>
+            <h2>Detector Bot 🤖</h2>
+            <button id="theme-toggle" class="header-btn" title="Toggle Theme">🌙</button>
+        </div>
+        <div id="chat-box">
+            </div>
+        <div id="input-container">
+            <input type="text" id="user-input" placeholder="Type a message...">
+            <button id="send-btn">➤</button>
+        </div>
+    </div>
+
+    <script>
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const themeToggle = document.getElementById('theme-toggle');
+        const clearBtn = document.getElementById('clear-btn');
+
+        const initialBotMessage = `Hi! Send me a sentence and I'll classify it as Hate Speech, Offensive, or Neither.`;
+
+        // --- Core Chat Functions ---
+        
+        function addMessage(text, sender) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', sender);
+            messageElement.textContent = text;
+            chatBox.appendChild(messageElement);
+            chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll
+        }
+
+        async function getBotResponse(message) {
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message })
+                });
+                const data = await response.json();
+                addMessage(`Classification: ${data.response}`, 'bot');
+            } catch (error) {
+                console.error("Error:", error);
+                addMessage("Sorry, I couldn't connect to the server.", 'bot');
+            }
+        }
+
+        function sendMessage() {
+            const message = userInput.value.trim();
+            if (message === '') return;
+
+            addMessage(message, 'user');
+            userInput.value = '';
+            
+            getBotResponse(message);
+        }
+        
+        // --- Feature: Clear Chat ---
+        
+        function clearChat() {
+            chatBox.innerHTML = '';
+            addMessage(initialBotMessage, 'bot');
+        }
+
+        // --- Feature: Light/Dark Mode ---
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+
+        function toggleTheme() {
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            applyTheme(newTheme);
+        }
+
+        // --- Event Listeners and Initialization ---
+
+        sendBtn.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        themeToggle.addEventListener('click', toggleTheme);
+        clearBtn.addEventListener('click', clearChat);
+
+        // On page load, apply saved theme and show initial message
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            applyTheme(savedTheme);
+            clearChat(); // This also adds the initial message
+        });
+
+    </script>
+</body>
+</html>
